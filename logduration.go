@@ -10,6 +10,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	tm "github.com/buger/goterm"
 )
 
 var firstTime time.Time
@@ -26,6 +28,7 @@ func main() {
 	regex := flag.String("re", "", "Regex to extract date and time")
 	tf = flag.String("tf", "", "Time format")
 	durationField := flag.Int("field", -1, "Duration field")
+	plot := flag.Bool("plot", false, "Plot data in terminal")
 
 	flag.Parse()
 
@@ -83,7 +86,18 @@ func main() {
 
 	var tfmt string = "2006/01/02 15:04:05"
 
-	fmt.Println("date time duration(ms)")
+	var table *tm.DataTable
+	var chart *tm.LineChart
+	if *plot {
+		table = &tm.DataTable{}
+		chart = tm.NewLineChart(100, 20)
+		//chart.Flags = tm.DRAW_INDEPENDENT
+		table.AddColumn("Time")
+		table.AddColumn("Duration ms")
+	} else {
+		fmt.Println("date time duration(ms)")
+	}
+
 	for _, file := range files {
 		if file == "-" {
 			src = os.Stdin
@@ -123,8 +137,17 @@ func main() {
 			if err != nil {
 				log.Fatalf("%s: %s", err, line)
 			}
-			fmt.Printf("%s %d\n", normalizedTstamp, d.Nanoseconds()/10000000)
+			ms := d.Nanoseconds() / 10000000
+			if *plot {
+				table.AddRow(float64(t.Unix()), float64(ms))
+			} else {
+				fmt.Printf("%s %d\n", normalizedTstamp, ms)
+			}
 		}
+	}
+	if *plot {
+		tm.Println(chart.Draw(table))
+		tm.Flush()
 	}
 
 	os.Exit(ret)
