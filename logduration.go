@@ -113,6 +113,11 @@ func main() {
 			}
 			normalizedTstamp := t.Format(tfmt)
 			chunks := strings.Split(line, " ")
+			//log.Printf("len(chunks) %d [%d]", len(chunks), *durationField-1)
+			if len(chunks) < *durationField {
+				log.Printf("corrupt line? [%s]", line)
+				continue
+			}
 			str := chunks[*durationField-1]
 			d, err := time.ParseDuration(str)
 			if err != nil {
