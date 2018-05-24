@@ -121,7 +121,7 @@ func main() {
 			str := chunks[*durationField-1]
 			d, err := time.ParseDuration(str)
 			if err != nil {
-				log.Fatal(err)
+				log.Fatalf("%s: %s", err, line)
 			}
 			fmt.Printf("%s %d\n", normalizedTstamp, d.Nanoseconds()/10000000)
 		}
