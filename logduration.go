@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"regexp"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -23,6 +24,16 @@ var groupRe *regexp.Regexp
 
 func main() {
 	log.SetFlags(log.Lshortfile)
+	var (
+		line string
+	)
+
+	defer func() {
+		if err := recover(); err != nil {
+			log.Printf("panic caught: %s\n%s\n%s", err, line, debug.Stack())
+		}
+	}()
+
 	f := flag.String("f", "", "Time format - %T %C %H %M %S %m %d %y %b."+
 		"\n\tMore precise format can be given via -re and -tf")
 	regex := flag.String("re", "", "Regex to extract date and time")
@@ -114,7 +125,7 @@ func main() {
 		lnum := 0
 		r := bufio.NewScanner(src)
 		for r.Scan() {
-			line := r.Text()
+			line = r.Text()
 			lnum++
 			m := re.FindStringSubmatch(line)
 			if m == nil {
