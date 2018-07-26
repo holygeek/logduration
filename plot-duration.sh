@@ -30,6 +30,10 @@ OPTIONS
     -h
 	Show this help message
 
+    -k
+        Do not delete the generated gnuplot script (temp file name will be printed
+        to stdout)
+
     -n
 	Dry run - show what is going to be executed.
 
@@ -60,7 +64,7 @@ width=1000
 height=500
 theme=white
 since=
-format_x='%l%p\n%a\n%d'
+format_x='%H:%M\n%a\n%d\n%b'
 duration=
 dryrun=
 UNTIL=
@@ -68,9 +72,14 @@ SINCE=
 timefmt='%Y/%m/%d %H:%M:%S'
 png_file=
 batchmode=
-while getopts bd:E:f:hno:W:H:S:s:T:t:x: opt
+additional_commands=
+keep_script=
+while getopts a:bd:E:f:hkno:W:H:S:s:T:t:x: opt
 do
 	case "$opt" in
+		a)
+			additional_commands=$(cat $OPTARG)
+			;;
 		b)
 			batchmode=t
 			;;
@@ -82,6 +91,9 @@ do
 			;;
 		f)
 			timefmt=$OPTARG
+			;;
+		k)
+			keep_script=t
 			;;
 		n)
 			dryrun=t
@@ -183,27 +195,35 @@ fi
 
 using="using 1:\"duration(ms)\" with impulses"
 
-gnuplot_cmd="set xdata time;
-set timefmt \"$timefmt\";
-set title '$title' textcolor rgb \"$fg\";
-set key autotitle columnhead textcolor rgb \"$fg\";
-set format x \"$format_x\";
+tmpfile=/tmp/duration.$$.gnuplot
+if [ -z "$keep_script" ]; then
+	trap "rm  $tmpfile" EXIT
+fi
+cat > $tmpfile <<EOF
+set xdata time;
+set timefmt "$timefmt";
+set title '$title' textcolor rgb "$fg";
+set key autotitle columnhead textcolor rgb "$fg";
+set format x "$format_x";
+$additional_commands
 $xrange;
-set xlabel \"Time\" textcolor rgb \"$fg\";
-set ylabel \"Duration (ms)\" textcolor rgb \"$fg\";
+set xlabel "Time" textcolor rgb "$fg";
+set ylabel "Duration (ms)" textcolor rgb "$fg";
 set yrange [0:];
-set terminal png size $width,$height background rgb\"$bg\";
-set border lw 1 lc rgb \"$fg\";
-set xtics textcolor rgb \"$fg\";
-set ytics textcolor rgb \"$fg\";
-set grid linecolor rgb \"gray\";
+set terminal png size $width,$height background rgb "$bg";
+set border lw 1 lc rgb "$fg";
+set xtics textcolor rgb "$fg";
+set ytics textcolor rgb "$fg";
+set grid linecolor rgb "gray";
 
-plot '$log' $using;"
+plot '$log' $using;
+EOF
 
 if [ -n "$dryrun" ]; then
   echo "gnuplot -persist -e \"$gnuplot_cmd\""
 else
-  gnuplot -persist -e "$gnuplot_cmd" >$png_file
+  echo "gnuplot -persist -c '$tmpfile' >$png_file"
+  gnuplot -persist -c "$tmpfile" >$png_file
   if [ -z "$batchmode" ]; then
     echo qiv "$png_file" &&
     qiv "$png_file"
